@@ -7,7 +7,7 @@ Using onChange on HTML range inputs causes React to re-render during user drag i
 Use local component state to track the slider value during dragging, and only sync to the parent on drag completion using onMouseUp and onTouchEnd events.
 
 ### Pattern
-```tsx
+\`\`\`tsx
 const [tempValue, setTempValue] = useState<string>(String(initialValue))
 
 const handleDragEnd = () => {
@@ -23,7 +23,7 @@ const handleDragEnd = () => {
   onTouchEnd={handleDragEnd}
   className="cursor-pointer"
 />
-```
+\`\`\`
 
 ### Key Points
 - Keep slider value in local state during drag (no parent re-renders)

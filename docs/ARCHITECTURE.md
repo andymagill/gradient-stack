@@ -12,7 +12,7 @@ Gradient Stack is a CSS gradient animation tool built with Next.js App Router. I
 
 ## Directory Structure
 
-```
+\`\`\`
 ├── app/
 │   ├── page.tsx              # Gallery homepage
 │   ├── editor/[id]/page.tsx  # Project editor
@@ -38,11 +38,11 @@ Gradient Stack is a CSS gradient animation tool built with Next.js App Router. I
 └── docs/
     ├── SPECIFICATION.md      # Original spec
     └── ARCHITECTURE.md       # This file
-```
+\`\`\`
 
 ## Data Flow
 
-```
+\`\`\`
 ProjectState
      │
      ├─► PreviewCanvas (renders CSS animation)
@@ -54,7 +54,7 @@ ProjectState
      └─► Timeline (manages keyframes)
            │
            └─► useAnimation hook (playback, interpolation)
-```
+\`\`\`
 
 ## Key Components
 
@@ -83,13 +83,13 @@ Generates all CSS output:
 
 1. **CSS Variables**: Each animatable property (colors, angles, positions) is a CSS variable
 2. **@property Registration**: Browser knows the type for interpolation:
-   ```css
+   \`\`\`css
    @property --gradient-l0-c0 {
      syntax: "<color>";
      initial-value: #ff0000;
      inherits: false;
    }
-   ```
+   \`\`\`
 3. **@keyframes**: Define variable values at each timeline position
 4. **Animation Scrubbing**: `animation-delay: -${time}ms` with `animation-play-state: paused`
 

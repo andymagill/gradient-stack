@@ -10,7 +10,7 @@ Mobile browsers (Chrome, Safari) have dynamic address bars that change the viewp
 
 Use `dvh` (dynamic viewport height) units which automatically adjust for the mobile browser's UI elements.
 
-```css
+\`\`\`css
 /* WRONG - content may be hidden behind address bar */
 .container {
   min-height: 100vh;
@@ -26,11 +26,11 @@ Use `dvh` (dynamic viewport height) units which automatically adjust for the mob
   min-height: 100vh;  /* Fallback */
   min-height: 100dvh; /* Modern browsers */
 }
-```
+\`\`\`
 
 ### Tailwind Usage
 
-```jsx
+\`\`\`jsx
 // WRONG
 <div className="min-h-screen">
 
@@ -39,7 +39,7 @@ Use `dvh` (dynamic viewport height) units which automatically adjust for the mob
 
 // Or use the utility class from globals.css
 <div className="min-h-dvh">
-```
+\`\`\`
 
 ### Important Notes
 

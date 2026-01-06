@@ -12,7 +12,7 @@ The PreviewCanvas component MUST:
 - Be positioned at `z-0` (background layer)
 - This is the PRIMARY content - users must always see their gradient animation
 
-```tsx
+\`\`\`tsx
 // CORRECT - Preview fills entire viewport
 <div className="fixed inset-0 z-0">
   <PreviewCanvas ... />
@@ -22,7 +22,7 @@ The PreviewCanvas component MUST:
 <div className="relative w-full h-screen">
   <PreviewCanvas ... />
 </div>
-```
+\`\`\`
 
 ### Requirement 2: All Panels Overlay the Preview
 
@@ -48,7 +48,7 @@ Backgrounds are handled INSIDE the child components themselves:
 
 The header and timeline containers MUST NOT have panel-level backgrounds because they need to allow the preview to show between their child elements.
 
-```tsx
+\`\`\`tsx
 // CORRECT - Editor page containers have NO backgrounds
 <header className="pointer-events-auto flex items-center gap-3 p-3 shrink-0">
   {/* NO bg-* class on header - backgrounds on child elements */}
@@ -69,7 +69,7 @@ The header and timeline containers MUST NOT have panel-level backgrounds because
 <header className="bg-card/95 backdrop-blur border-b">...</header>
 <aside className="bg-card/95 backdrop-blur border">...</aside>
 <footer className="bg-card/95 backdrop-blur border-t">...</footer>
-```
+\`\`\`
 
 ### Requirement 4: Panels Use Flexbox Flow Within Overlay
 
@@ -79,7 +79,7 @@ Within the overlay container, panels MUST:
 - Allow content to scroll when exceeding viewport
 - Use `max-w-*` constraints to prevent overflow
 
-```
+\`\`\`
 DESKTOP LAYOUT (main is flex-row):
 ┌─────────────────────────────────────────────┐
 │ [PropertyEditor] │ [spacer] │ [LayerManager]│
@@ -94,11 +94,11 @@ MOBILE LAYOUT (main is flex-col):
 ├─────────────────────────────────────────────┤
 │ [spacer - click through to preview]         │
 └─────────────────────────────────────────────┘
-```
+\`\`\`
 
 ## Visual Diagram
 
-```
+\`\`\`
 ┌─────────────────────────────────────────────────────────────┐
 │ LAYER 0 (z-0): PreviewCanvas                                │
 │ - Fixed position, fills entire viewport (100vw x 100vh)    │
@@ -120,7 +120,7 @@ MOBILE LAYOUT (main is flex-col):
 │ │ └─────────────────────────────────────────────────────┘ │ │
 │ └─────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────┘
-```
+\`\`\`
 
 ## Component Background Responsibilities
 

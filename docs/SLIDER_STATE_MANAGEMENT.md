@@ -15,7 +15,7 @@ The issue stems from the controlled component pattern and parent-child state syn
 The pattern requires strict adherence to controlled component best practices:
 
 ### CRITICAL: String/Number Conversion Pattern
-```tsx
+\`\`\`tsx
 // CORRECT: Always use String() for HTML input value
 <input
   type="range"
@@ -25,7 +25,7 @@ The pattern requires strict adherence to controlled component best practices:
     onChange({ ...gradient, angle: newAngle })
   }}
 />
-```
+\`\`\`
 
 ### Why This Matters
 - HTML input elements always convert values to strings internally

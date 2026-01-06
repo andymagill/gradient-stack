@@ -57,7 +57,7 @@ Unlike static editors, Gradient Stack implements a Timeline concept:
 - Animation keyframe generation with easing functions
 
 ## File Structure
-```
+\`\`\`
 src/
 ├── components/
 │   ├── editor/

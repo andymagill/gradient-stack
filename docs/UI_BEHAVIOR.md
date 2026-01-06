@@ -20,17 +20,17 @@ The editor uses a two-layer architecture that MUST NOT be changed:
    - `pointer-events-none` on container, `pointer-events-auto` on individual panels
 
 **Desktop Layout (flex-row):**
-```
+\`\`\`
 [Property Editor (left)] | [spacer grows] | [Layer Manager (right)]
-```
+\`\`\`
 - Property editor pushes layer manager to the right when open
 
 **Mobile Layout (flex-col):**
-```
+\`\`\`
 [Layer Manager (top-right aligned)]
 [Property Editor (if open)]
 [spacer grows]
-```
+\`\`\`
 
 **Timeline:** Always at bottom, full viewport width, inside the overlay container.
 
@@ -175,14 +175,14 @@ Playback automatically pauses when:
 - Values are always controlled (from props), never use local state during drag
 
 **Implementation:**
-```tsx
+\`\`\`tsx
 <input
   type="range"
   value={String(propValue)}  // Always convert to string
   onInput={(e) => onChange(Number(e.target.value))}  // Convert back to number
   // Never use onChange for sliders!
 />
-```
+\`\`\`
 
 **Documentation:** See `docs/SLIDER_IMPLEMENTATION.md` for complete details.
 
@@ -220,7 +220,7 @@ Playback automatically pauses when:
 
 ## State Management Flow
 
-```
+\`\`\`
 User Action
     ↓
 Component Handler
@@ -232,7 +232,7 @@ Auto-save to localStorage
 Re-render with new state
     ↓
 Preview Canvas updates (CSS animation)
-```
+\`\`\`
 
 **Key Points:**
 - All state changes flow through React state

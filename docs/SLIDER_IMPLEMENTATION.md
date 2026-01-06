@@ -6,13 +6,13 @@ The gradient editor sliders use a specific pattern that MUST be maintained to wo
 
 ### The Pattern
 
-```tsx
+\`\`\`tsx
 <input
   type="range"
   value={String(gradient.angle)}
   onInput={(e) => onChange({ ...gradient, angle: Number(e.currentTarget.value) })}
 />
-```
+\`\`\`
 
 ### Why This Works
 
