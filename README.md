@@ -11,10 +11,10 @@ Gradient Stack is a visual playground for creating, saving, and sharing animated
 
 ## Getting Started
 
-```bash
+\`\`\`bash
 pnpm install
 pnpm dev
-```
+\`\`\`
 
 The editor lives under `app/editor/[id]/page.tsx`, while `app/page.tsx` renders the gallery, hero text, and CTA for creating new stacks.
 
