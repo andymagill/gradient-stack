@@ -13,6 +13,15 @@ const PROJECTS_LIST_KEY = "gradient-stack-projects-list"
 /** Storage key prefix for individual projects */
 const PROJECT_PREFIX = "gradient-stack-project-"
 
+const deepCloneValue = <T>(value: T): T => {
+  if (typeof globalThis.structuredClone === "function") {
+    return globalThis.structuredClone(value)
+  }
+  return JSON.parse(JSON.stringify(value))
+}
+
+const cloneProjectState = (project: ProjectState): ProjectState => deepCloneValue(project)
+
 /**
  * Project metadata for gallery display
  */
@@ -563,6 +572,19 @@ export const TEMPLATES: ProjectState[] = [
     updatedAt: Date.now(),
   },
 ]
+
+export function createProjectFromTemplate(template: ProjectState, nameOverride?: string): ProjectState {
+  const clonedTemplate = cloneProjectState(template)
+  const baseName = nameOverride ?? `${template.name} Copy`
+
+  return {
+    ...clonedTemplate,
+    id: generateId(),
+    name: baseName,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  }
+}
 
 /**
  * Get list of all project metadata
