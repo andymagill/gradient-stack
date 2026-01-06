@@ -13,10 +13,8 @@ import type { Layer, LinearGradient, RadialGradient, URLLayer, ProjectState } fr
  * @returns CSS linear-gradient() string
  */
 export function compileGradientCSS(gradient: LinearGradient): string {
-  const colorStopsStr = gradient.colorStops
-    .sort((a, b) => a.position - b.position)
-    .map((stop) => `${stop.color} ${stop.position}%`)
-    .join(", ")
+  const sortedStops = [...gradient.colorStops].sort((a, b) => a.position - b.position)
+  const colorStopsStr = sortedStops.map((stop) => `${stop.color} ${stop.position}%`).join(", ")
 
   return `linear-gradient(${gradient.angle}deg, ${colorStopsStr})`
 }
@@ -30,8 +28,8 @@ export function compileGradientCSS(gradient: LinearGradient): string {
 export function compileGradientCSSWithVariables(gradient: LinearGradient, layerIndex: number): string {
   const angleVar = `var(--linear-${layerIndex}-angle, ${gradient.angle}deg)`
 
-  const colorStopsStr = gradient.colorStops
-    .sort((a, b) => a.position - b.position)
+  const sortedStops = [...gradient.colorStops].sort((a, b) => a.position - b.position)
+  const colorStopsStr = sortedStops
     .map((stop, stopIndex) => {
       const colorVar = `--gradient-l${layerIndex}-c${stopIndex}`
       const positionVar = `--gradient-l${layerIndex}-p${stopIndex}`
@@ -50,10 +48,8 @@ export function compileGradientCSSWithVariables(gradient: LinearGradient, layerI
 export function compileRadialGradientCSS(gradient: RadialGradient): string {
   const shapeStr = gradient.shape === "circle" ? "circle" : "ellipse"
   const positionStr = `${gradient.positionX}% ${gradient.positionY}%`
-  const colorStopsStr = gradient.colorStops
-    .sort((a, b) => a.position - b.position)
-    .map((stop) => `${stop.color} ${stop.position}%`)
-    .join(", ")
+  const sortedStops = [...gradient.colorStops].sort((a, b) => a.position - b.position)
+  const colorStopsStr = sortedStops.map((stop) => `${stop.color} ${stop.position}%`).join(", ")
 
   return `radial-gradient(${shapeStr} at ${positionStr}, ${colorStopsStr})`
 }
@@ -70,8 +66,8 @@ export function compileRadialGradientCSSWithVariables(gradient: RadialGradient, 
   const positionStr = `${positionXVar} ${positionYVar}`
 
   const shapeStr = gradient.shape === "circle" ? "circle" : "ellipse"
-  const colorStopsStr = gradient.colorStops
-    .sort((a, b) => a.position - b.position)
+  const sortedStops = [...gradient.colorStops].sort((a, b) => a.position - b.position)
+  const colorStopsStr = sortedStops
     .map((stop, stopIndex) => {
       const colorVar = `--gradient-r${layerIndex}-c${stopIndex}`
       const positionVar = `--gradient-r${layerIndex}-p${stopIndex}`
