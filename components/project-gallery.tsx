@@ -9,7 +9,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -21,12 +21,12 @@ import {
   createProject,
   saveProject,
   generateRandomTemplate,
+  createProjectFromTemplate,
 } from "@/lib/project-storage"
 import type { ProjectMetadata } from "@/lib/project-storage"
 import { compileBackgroundCSS } from "@/lib/gradient-compiler"
 import { loadProject } from "@/lib/project-storage"
 import { Input } from "@/components/ui/input"
-import { generateId } from "@/lib/utils" // Assuming generateId is a utility function
 
 function generateSimpleRandomGradient(): string {
   const getRandomColor = () => {
@@ -49,16 +49,35 @@ export function ProjectGallery() {
   const router = useRouter()
   const [userProjects, setUserProjects] = useState<ProjectMetadata[]>([])
   const [searchTerm, setSearchTerm] = useState("")
+  const [projectBackgrounds, setProjectBackgrounds] = useState<Record<string, string>>({})
+
+  const refreshProjects = useCallback(() => {
+    const projects = getProjectsList()
+    setUserProjects(projects)
+    const backgrounds: Record<string, string> = {}
+    projects.forEach(({ id }) => {
+      const project = loadProject(id)
+      if (!project) {
+        backgrounds[id] = "transparent"
+        return
+      }
+
+      const layers = project.keyframes.length > 0 ? project.keyframes[0].layers : project.layers
+      backgrounds[id] = compileBackgroundCSS(layers)
+    })
+    setProjectBackgrounds(backgrounds)
+  }, [])
 
   // Load user projects on mount
   useEffect(() => {
-    setUserProjects(getProjectsList())
-  }, [])
+    refreshProjects()
+  }, [refreshProjects])
 
   // Create new project
   const handleCreateNew = () => {
     const newProject = createProject()
     saveProject(newProject)
+    refreshProjects()
     router.push(`/editor/${newProject.id}`)
   }
 
@@ -74,21 +93,15 @@ export function ProjectGallery() {
 
       if (!template) return
 
-      // Create new project with template data but new ID
-      const newProject = {
-        ...template,
-        id: generateId(),
-        name: `${template.name} Copy`,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      }
+      const newProject = createProjectFromTemplate(template)
 
-      // Save the new project
+      // Save and refresh
       saveProject(newProject)
-      setUserProjects(getProjectsList())
+      refreshProjects()
 
       // Navigate to the new project
       router.push(`/editor/${newProject.id}`)
+      return
     } else {
       // Open existing saved project
       router.push(`/editor/${id}`)
@@ -100,7 +113,7 @@ export function ProjectGallery() {
     e.stopPropagation()
     if (confirm("Delete this gradient stack?")) {
       deleteProject(id)
-      setUserProjects(getProjectsList())
+      refreshProjects()
     }
   }
 
@@ -121,12 +134,7 @@ export function ProjectGallery() {
       return compileBackgroundCSS(layers)
     }
 
-    // For user projects, use loadProject
-    const project = loadProject(id)
-    if (!project) return "transparent"
-
-    const layers = project.keyframes.length > 0 ? project.keyframes[0].layers : project.layers
-    return compileBackgroundCSS(layers)
+    return projectBackgrounds[id] ?? "transparent"
   }
 
   const filteredProjects = userProjects.filter((project) =>
