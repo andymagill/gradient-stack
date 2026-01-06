@@ -1,20 +1,10 @@
-/**
- * Project storage and management utilities
- *
- * Handles localStorage operations for multiple gradient stack projects,
- * provides template presets, and manages project CRUD operations.
- */
-
-import type { ProjectState, LinearGradient, RadialGradient, Layer } from "./gradient-types"
-import { generateId } from "./utils"
-
 /** Storage key for list of all projects */
 const PROJECTS_LIST_KEY = "gradient-stack-projects-list"
 /** Storage key prefix for individual projects */
 const PROJECT_PREFIX = "gradient-stack-project-"
 
-const deepCloneValue = <T>(value: T): T => {
-  if (typeof globalThis.structuredClone === "function") {
+const deepCloneValue = <T>(value: T): T => {\
+  if (typeof globalThis.structuredClone === "function") {\
     return globalThis.structuredClone(value)
   }
   return JSON.parse(JSON.stringify(value))
@@ -25,7 +15,7 @@ const cloneProjectState = (project: ProjectState): ProjectState => deepCloneValu
 /**
  * Project metadata for gallery display
  */
-export interface ProjectMetadata {
+export interface ProjectMetadata {\
   id: string
   name: string
   createdAt: number
@@ -36,10 +26,10 @@ export interface ProjectMetadata {
 /**
  * Generate a random color in hex format with full opacity
  */
-function getRandomColor(): string {
+function getRandomColor(): string {\
   const letters = "0123456789ABCDEF"
-  let color = "#"
-  for (let i = 0; i < 6; i++) {
+  let color = "#"\
+  for (let i = 0; i < 6; i++) {\
     color += letters[Math.floor(Math.random() * 16)]
   }
   return color + "ff"
@@ -48,10 +38,10 @@ function getRandomColor(): string {
 /**
  * Generate a color with random opacity
  */
-function getRandomColorWithOpacity(): string {
+function getRandomColorWithOpacity(): string {\
   const letters = "0123456789ABCDEF"
-  let color = "#"
-  for (let i = 0; i < 6; i++) {
+  let color = "#"\
+  for (let i = 0; i < 6; i++) {\
     color += letters[Math.floor(Math.random() * 16)]
   }
   const opacity = Math.floor(Math.random() * 100)
@@ -61,9 +51,9 @@ function getRandomColorWithOpacity(): string {
 /**
  * Generate a random linear gradient layer
  */
-function generateRandomLinearGradient(includeTransparency = false): LinearGradient {
-  const colorStops = [
-    { id: "1", color: getRandomColor(), position: 0 },
+function generateRandomLinearGradient(includeTransparency = false): LinearGradient {\
+  const colorStops = [\
+    { id: "1", color: getRandomColor(), position: 0 },\
     { id: "2", color: getRandomColor(), position: Math.floor(Math.random() * 50) + 25 },
   ]
 
@@ -73,7 +63,7 @@ function generateRandomLinearGradient(includeTransparency = false): LinearGradie
     colorStops.push({ id: "3", color: getRandomColor(), position: 100 })
   }
 
-  return {
+  return {\
     type: "linear",
     angle: Math.floor(Math.random() * 360),
     colorStops,
@@ -84,7 +74,7 @@ function generateRandomLinearGradient(includeTransparency = false): LinearGradie
 /**
  * Generate a random radial gradient layer
  */
-function generateRandomRadialGradient(includeTransparency = false): RadialGradient {
+function generateRandomRadialGradient(includeTransparency = false): RadialGradient {\
   const colorStops = [{ id: "1", color: getRandomColor(), position: 0 }]
 
   if (includeTransparency) {
@@ -93,7 +83,7 @@ function generateRandomRadialGradient(includeTransparency = false): RadialGradie
     colorStops.push({ id: "2", color: getRandomColor(), position: 100 })
   }
 
-  return {
+  return {\
     type: "radial",
     shape: Math.random() > 0.5 ? "circle" : "ellipse",
     sizeType: ["closest-side", "farthest-side", "closest-corner", "farthest-corner"][Math.floor(Math.random() * 4)] as
@@ -111,11 +101,11 @@ function generateRandomRadialGradient(includeTransparency = false): RadialGradie
 /**
  * Generate a random layer of any type
  */
-function generateRandomLayer(includeTransparency = false): Layer {
-  const rand = Math.random()
-  if (rand < 0.5) {
+function generateRandomLayer(includeTransparency = false): Layer {\
+  const rand = Math.random()\
+  if (rand < 0.5) {\
     return generateRandomLinearGradient(includeTransparency)
-  } else {
+  } else {\
     return generateRandomRadialGradient(includeTransparency)
   }
 }
@@ -125,7 +115,7 @@ function generateRandomLayer(includeTransparency = false): Layer {
  * Returns array of layer types that will be consistent across all keyframes
  * LIMITED TO 2 LAYERS for the random template
  */
-function generateRandomLayerTypes(): ("linear" | "radial")[] {
+function generateRandomLayerTypes(): ("linear" | "radial")[] {\
   const types: ("linear" | "radial")[] = [
     Math.random() > 0.5 ? "linear" : "radial",
     Math.random() > 0.5 ? "linear" : "radial",
@@ -136,10 +126,10 @@ function generateRandomLayerTypes(): ("linear" | "radial")[] {
 /**
  * Generate a layer of specific type
  */
-function generateLayerOfType(type: "linear" | "radial", includeTransparency = false): Layer {
-  if (type === "linear") {
+function generateLayerOfType(type: "linear" | "radial", includeTransparency = false): Layer {\
+  if (type === "linear") {\
     return generateRandomLinearGradient(includeTransparency)
-  } else {
+  } else {\
     return generateRandomRadialGradient(includeTransparency)
   }
 }
@@ -149,31 +139,31 @@ function generateLayerOfType(type: "linear" | "radial", includeTransparency = fa
  * This function should be called each time the random template is used
  * to ensure unique random values every time
  */
-export function generateRandomTemplate(): ProjectState {
+export function generateRandomTemplate(): ProjectState {\
   const types = generateRandomLayerTypes()
 
-  return {
+  return {\
     id: "template-random",
     name: "Random Mix",
     layers: types.map((type) => generateLayerOfType(type, false)),
     keyframes: [
-      {
+      {\
         id: "random-0",
         position: 0,
         layers: types.map((type) => generateLayerOfType(type, false)),
       },
-      {
+      {\
         id: "random-50",
         position: 50,
         layers: types.map((type) => generateLayerOfType(type, false)),
       },
-      {
+      {\
         id: "random-100",
         position: 100,
         layers: types.map((type) => generateLayerOfType(type, false)),
       },
     ],
-    animation: {
+    animation: {\
       name: "gradient-animation",
       duration: 5000,
       easing: "ease-in-out",
@@ -190,7 +180,7 @@ export function generateRandomTemplate(): ProjectState {
  * Each template includes at least two keyframes demonstrating real-world animation usage
  */
 export const TEMPLATES: ProjectState[] = [
-  {
+  {\
     id: "template-sunset",
     name: "Sunset Waves",
     layers: [
@@ -203,7 +193,7 @@ export const TEMPLATES: ProjectState[] = [
           { id: "3", color: "#ee5a6fff", position: 100 },
         ],
         blendMode: "normal",
-      } as LinearGradient,
+      },
     ],
     keyframes: [
       {
@@ -219,7 +209,7 @@ export const TEMPLATES: ProjectState[] = [
               { id: "3", color: "#ee5a6fff", position: 100 },
             ],
             blendMode: "normal",
-          } as LinearGradient,
+          },
         ],
       },
       {
@@ -235,7 +225,7 @@ export const TEMPLATES: ProjectState[] = [
               { id: "3", color: "#feca57ff", position: 100 },
             ],
             blendMode: "normal",
-          } as LinearGradient,
+          },
         ],
       },
     ],
@@ -264,7 +254,7 @@ export const TEMPLATES: ProjectState[] = [
           { id: "2", color: "#341f97ff", position: 100 },
         ],
         blendMode: "normal",
-      } as RadialGradient,
+      },
     ],
     keyframes: [
       {
@@ -282,7 +272,7 @@ export const TEMPLATES: ProjectState[] = [
               { id: "2", color: "#341f97ff", position: 100 },
             ],
             blendMode: "normal",
-          } as RadialGradient,
+          },
         ],
       },
       {
@@ -300,7 +290,7 @@ export const TEMPLATES: ProjectState[] = [
               { id: "2", color: "#001b3aff", position: 100 },
             ],
             blendMode: "normal",
-          } as RadialGradient,
+          },
         ],
       },
     ],
@@ -327,7 +317,7 @@ export const TEMPLATES: ProjectState[] = [
           { id: "3", color: "#f093fb80", position: 100 },
         ],
         blendMode: "screen",
-      } as LinearGradient,
+      },
       {
         type: "linear",
         angle: 90,
@@ -336,7 +326,7 @@ export const TEMPLATES: ProjectState[] = [
           { id: "5", color: "#00f2fe80", position: 100 },
         ],
         blendMode: "overlay",
-      } as LinearGradient,
+      },
     ],
     keyframes: [
       {
@@ -352,7 +342,7 @@ export const TEMPLATES: ProjectState[] = [
               { id: "3", color: "#f093fb80", position: 100 },
             ],
             blendMode: "screen",
-          } as LinearGradient,
+          },
           {
             type: "linear",
             angle: 90,
@@ -361,7 +351,7 @@ export const TEMPLATES: ProjectState[] = [
               { id: "5", color: "#00f2fe80", position: 100 },
             ],
             blendMode: "overlay",
-          } as LinearGradient,
+          },
         ],
       },
       {
@@ -377,7 +367,7 @@ export const TEMPLATES: ProjectState[] = [
               { id: "3", color: "#764ba2ff", position: 100 },
             ],
             blendMode: "screen",
-          } as LinearGradient,
+          },
           {
             type: "linear",
             angle: 180,
@@ -386,7 +376,7 @@ export const TEMPLATES: ProjectState[] = [
               { id: "5", color: "#4facfe80", position: 100 },
             ],
             blendMode: "overlay",
-          } as LinearGradient,
+          },
         ],
       },
     ],
@@ -412,7 +402,7 @@ export const TEMPLATES: ProjectState[] = [
           { id: "2", color: "#FFFFFF00", position: 21.3 },
         ],
         blendMode: "normal",
-      } as LinearGradient,
+      },
       {
         type: "radial",
         shape: "circle",
@@ -424,7 +414,7 @@ export const TEMPLATES: ProjectState[] = [
           { id: "4", color: "#00000000", position: 11.6 },
         ],
         blendMode: "normal",
-      } as RadialGradient,
+      },
       {
         type: "linear",
         angle: 45,
@@ -433,7 +423,7 @@ export const TEMPLATES: ProjectState[] = [
           { id: "6", color: "#293834ff", position: 100 },
         ],
         blendMode: "normal",
-      } as LinearGradient,
+      },
     ],
     keyframes: [
       {
@@ -448,7 +438,7 @@ export const TEMPLATES: ProjectState[] = [
               { id: "2", color: "#FFFFFF00", position: 21.3 },
             ],
             blendMode: "normal",
-          } as LinearGradient,
+          },
           {
             type: "radial",
             shape: "circle",
@@ -460,7 +450,7 @@ export const TEMPLATES: ProjectState[] = [
               { id: "4", color: "#00000000", position: 11.6 },
             ],
             blendMode: "normal",
-          } as RadialGradient,
+          },
           {
             type: "linear",
             angle: 45,
@@ -469,7 +459,7 @@ export const TEMPLATES: ProjectState[] = [
               { id: "6", color: "#293834ff", position: 100 },
             ],
             blendMode: "normal",
-          } as LinearGradient,
+          },
         ],
       },
       {
@@ -484,7 +474,7 @@ export const TEMPLATES: ProjectState[] = [
               { id: "2", color: "#FFFFFF00", position: 21.3 },
             ],
             blendMode: "normal",
-          } as LinearGradient,
+          },
           {
             type: "radial",
             shape: "circle",
@@ -496,7 +486,7 @@ export const TEMPLATES: ProjectState[] = [
               { id: "4", color: "#00000000", position: 11.6 },
             ],
             blendMode: "normal",
-          } as RadialGradient,
+          },
           {
             type: "linear",
             angle: 0,
@@ -505,7 +495,7 @@ export const TEMPLATES: ProjectState[] = [
               { id: "6", color: "#c1ece0ff", position: 100 },
             ],
             blendMode: "normal",
-          } as LinearGradient,
+          },
         ],
       },
       {
@@ -520,7 +510,7 @@ export const TEMPLATES: ProjectState[] = [
               { id: "2", color: "#FFFFFF00", position: 21.3 },
             ],
             blendMode: "normal",
-          } as LinearGradient,
+          },
           {
             type: "radial",
             shape: "circle",
@@ -532,7 +522,7 @@ export const TEMPLATES: ProjectState[] = [
               { id: "4", color: "#00000000", position: 11.6 },
             ],
             blendMode: "normal",
-          } as RadialGradient,
+          },
           {
             type: "linear",
             angle: 261,
@@ -541,7 +531,7 @@ export const TEMPLATES: ProjectState[] = [
               { id: "6", color: "#293834ff", position: 100 },
             ],
             blendMode: "normal",
-          } as LinearGradient,
+          },
         ],
       },
     ],
