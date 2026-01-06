@@ -107,7 +107,7 @@ export function ProjectGallery() {
   // Generate thumbnail background CSS
   const getThumbnailCSS = (id: string, isTemplate?: boolean) => {
     if (isTemplate && id === "template-random") {
-      return generateSimpleRandomGradient()
+      return ""
     }
 
     if (isTemplate) {
@@ -234,6 +234,15 @@ interface ProjectCardProps {
 
 function ProjectCard({ id, name, backgroundCSS, onClick, onDelete, isTemplate }: ProjectCardProps) {
   const isRandomTemplate = isTemplate && id === "template-random"
+  const [currentBackground, setCurrentBackground] = useState(backgroundCSS)
+
+  useEffect(() => {
+    if (isRandomTemplate) {
+      setCurrentBackground(generateSimpleRandomGradient())
+    } else {
+      setCurrentBackground(backgroundCSS)
+    }
+  }, [backgroundCSS, isRandomTemplate])
 
   return (
     <Card
@@ -241,7 +250,10 @@ function ProjectCard({ id, name, backgroundCSS, onClick, onDelete, isTemplate }:
       onClick={onClick}
     >
       {/* Thumbnail Preview */}
-      <div className="h-48 w-full flex items-center justify-center" style={{ background: backgroundCSS }}>
+      <div
+        className="h-48 w-full flex items-center justify-center"
+        style={{ background: currentBackground }}
+      >
         {isRandomTemplate && <span className="text-6xl font-bold text-background opacity-80">?</span>}
       </div>
 
