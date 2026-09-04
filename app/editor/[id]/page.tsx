@@ -1,15 +1,12 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { PreviewCanvas } from "@/components/preview-canvas"
 import { LayerManager } from "@/components/layer-manager"
 import { PropertyEditor } from "@/components/property-editor"
 import { Timeline } from "@/components/timeline"
 import { CSSExportDialog } from "@/components/css-export-dialog"
-import { useAnimation } from "@/hooks/use-animation"
-import { loadProject, saveProject } from "@/lib/project-storage"
-import type { ProjectState, Layer } from "@/lib/gradient-types"
+import { useProjectEditor } from "@/hooks/use-project-editor"
 import { ArrowLeft, Edit2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -61,41 +58,28 @@ import { Input } from "@/components/ui/input"
  * │ │ └─────────────────────────────────────────────────────┘ │ │
  * │ └─────────────────────────────────────────────────────────┘ │
  * └─────────────────────────────────────────────────────────────┘
+ *
+ * All state orchestration (loading, autosave, layer/keyframe editing) lives
+ * in useProjectEditor — this file is layout plus wiring only.
  */
 export default function EditorPage() {
   const params = useParams()
   const router = useRouter()
   const projectId = params.id as string
 
-  // Core project state
-  const [project, setProject] = useState<ProjectState | null>(null)
-  const [activeLayerId, setActiveLayerId] = useState<number | undefined>(undefined)
-  const [exportDialogOpen, setExportDialogOpen] = useState(false)
-
-  // Project name editing state
-  const [isEditingName, setIsEditingName] = useState(false)
-  const [editedName, setEditedName] = useState("")
-
-  // Load project from storage on mount
-  useEffect(() => {
-    const loaded = loadProject(projectId)
-    if (!loaded) {
-      router.push("/")
-      return
-    }
-    setProject(loaded)
-    setEditedName(loaded.name)
-  }, [projectId, router])
-
-  // Auto-save project changes to localStorage
-  useEffect(() => {
-    if (project) {
-      saveProject(project)
-    }
-  }, [project])
-
-  // Animation hook manages playback, interpolation, and keyframe operations
   const {
+    project,
+    activeLayerIndex,
+    activeLayer,
+    displayLayers,
+    selectedKeyframe,
+    exportDialogOpen,
+    setExportDialogOpen,
+    isEditingName,
+    setIsEditingName,
+    editedName,
+    setEditedName,
+    handleNameChange,
     isPlaying,
     setIsPlaying,
     playbackTime,
@@ -106,110 +90,15 @@ export default function EditorPage() {
     copyKeyframe,
     removeKeyframe,
     updateKeyframe,
-    updateKeyframeLayer,
     setAnimationConfig,
-    getFrameAtTime,
-  } = useAnimation(project || ({} as ProjectState), (updates) =>
-    setProject((prev) => (prev ? { ...prev, ...updates, updatedAt: Date.now() } : null)),
-  )
-
-  // Update a base layer (not in a keyframe)
-  const updateLayer = (layerId: string, updates: Partial<Layer>) => {
-    if (!project) return
-    const index = Number.parseInt(layerId.replace("layer-", ""))
-    const newLayers = project.layers.map((layer, idx) => (idx === index ? { ...layer, ...updates } : layer))
-    setProject({ ...project, layers: newLayers, updatedAt: Date.now() })
-  }
-
-  // Add a new layer to the top of the stack (index 0) and select it
-  const addLayer = (layer: Layer) => {
-    if (!project) return
-    setProject({ ...project, layers: [layer, ...project.layers], updatedAt: Date.now() })
-    setActiveLayerId(0)
-  }
-
-  // Remove a layer from base layers
-  const removeLayerFromProject = (index: number) => {
-    if (!project) return
-    setProject({ ...project, layers: project.layers.filter((_, i) => i !== index), updatedAt: Date.now() })
-  }
-
-  // Reorder layers via drag-and-drop
-  const reorderLayers = (fromIndex: number, toIndex: number) => {
-    if (!project) return
-    const newLayers = [...project.layers]
-    const [removed] = newLayers.splice(fromIndex, 1)
-    newLayers.splice(toIndex, 0, removed)
-    setProject({ ...project, layers: newLayers, updatedAt: Date.now() })
-  }
-
-  // Save edited project name
-  const handleNameChange = () => {
-    if (!project || !editedName.trim()) {
-      setEditedName(project?.name || "")
-      setIsEditingName(false)
-      return
-    }
-    setProject({ ...project, name: editedName, updatedAt: Date.now() })
-    setIsEditingName(false)
-  }
-
-  /**
-   * Handle layer selection with auto-keyframe selection
-   */
-  const handleSelectLayer = (index: number) => {
-    if (index === activeLayerId) {
-      setActiveLayerId(undefined)
-      return
-    }
-
-    if (!selectedKeyframeId && project.keyframes.length > 0) {
-      const duration = project.animation?.duration || 3000
-      const timePercent = ((playbackTime % duration) / duration) * 100
-
-      let closestKeyframe = project.keyframes[0]
-      let minDistance = Math.abs(closestKeyframe.position - timePercent)
-
-      for (const kf of project.keyframes) {
-        const distance = Math.abs(kf.position - timePercent)
-        if (distance < minDistance) {
-          minDistance = distance
-          closestKeyframe = kf
-        }
-      }
-
-      setSelectedKeyframeId(closestKeyframe.id)
-      setPlaybackTime((closestKeyframe.position / 100) * duration)
-      setIsPlaying(false)
-    }
-
-    setActiveLayerId(index)
-  }
-
-  const duplicateLayer = (index: number) => {
-    if (!project) return
-    const layerToCopy = displayLayers[index]
-    const duplicatedLayer = JSON.parse(JSON.stringify(layerToCopy))
-
-    if (selectedKeyframe) {
-      const newLayers = [...displayLayers]
-      newLayers.splice(index + 1, 0, duplicatedLayer)
-      updateKeyframe(selectedKeyframe.id, { layers: newLayers })
-    } else {
-      const newLayers = [...project.layers]
-      newLayers.splice(index + 1, 0, duplicatedLayer)
-      setProject({ ...project, layers: newLayers, updatedAt: Date.now() })
-    }
-  }
-
-  const updateLayerVisibility = (index: number, layer: Layer) => {
-    if (selectedKeyframe) {
-      updateKeyframeLayer(selectedKeyframe.id, index, layer)
-    } else {
-      const newLayers = project.layers.map((l, i) => (i === index ? layer : l))
-      setProject({ ...project, layers: newLayers, updatedAt: Date.now() })
-    }
-  }
+    replaceLayer,
+    addLayer,
+    removeLayerFromProject,
+    reorderLayers,
+    duplicateLayer,
+    handleSelectLayer,
+    setActiveLayerIndex,
+  } = useProjectEditor(projectId)
 
   if (!project) {
     return (
@@ -219,13 +108,9 @@ export default function EditorPage() {
     )
   }
 
-  const selectedKeyframe = selectedKeyframeId ? project.keyframes.find((kf) => kf.id === selectedKeyframeId) : null
-  const displayLayers = selectedKeyframe ? selectedKeyframe.layers : getFrameAtTime(playbackTime)
-  const activeLayer = typeof activeLayerId === "number" ? displayLayers[activeLayerId] : undefined
-
   return (
     <>
-      {/* 
+      {/*
         LAYER 1: PREVIEW CANVAS (Background)
         CRITICAL: Fixed, fills entire viewport, sits behind everything (z-0)
       */}
@@ -233,13 +118,13 @@ export default function EditorPage() {
         <PreviewCanvas project={project} playbackTime={playbackTime} isPlaying={isPlaying} />
       </div>
 
-      {/* 
+      {/*
         LAYER 2: PANEL OVERLAY CONTAINER
         CRITICAL: Fixed overlay, flexbox layout, scrollable, NO backgrounds on containers
         Backgrounds are handled by child components internally
-        
+
         ALL ELEMENTS SCROLL TOGETHER: Header, panels, and timeline are all part of the same scroll group
-        
+
         MOBILE VIEWPORT HEIGHT: Uses min-h-dvh (dynamic viewport height) which accounts for
         mobile browser address bar. Falls back to min-h-screen for browsers without dvh support.
         DO NOT use 100vh or min-h-screen alone - they don't work correctly on mobile browsers.
@@ -305,15 +190,11 @@ export default function EditorPage() {
                 <PropertyEditor
                   layer={activeLayer}
                   onChange={(updatedLayer) => {
-                    if (typeof activeLayerId === "number") {
-                      if (selectedKeyframe) {
-                        updateKeyframeLayer(selectedKeyframe.id, activeLayerId, updatedLayer)
-                      } else {
-                        updateLayer(`layer-${activeLayerId}`, updatedLayer)
-                      }
+                    if (activeLayerIndex !== null) {
+                      replaceLayer(activeLayerIndex, updatedLayer)
                     }
                   }}
-                  onClose={() => setActiveLayerId(undefined)}
+                  onClose={() => setActiveLayerIndex(null)}
                 />
               )}
             </div>
@@ -326,7 +207,7 @@ export default function EditorPage() {
           <aside className="order-1 md:order-3 self-end md:self-start shrink-0">
             <LayerManager
               layers={displayLayers}
-              activeLayerId={typeof activeLayerId === "number" ? activeLayerId : undefined}
+              activeLayerIndex={activeLayerIndex}
               onSelectLayer={handleSelectLayer}
               onRemoveLayer={(index) => {
                 if (selectedKeyframe) {
@@ -337,10 +218,10 @@ export default function EditorPage() {
                 }
               }}
               onReorderLayers={(fromIndex, toIndex) => {
-                const newLayers = [...displayLayers]
-                const [removed] = newLayers.splice(fromIndex, 1)
-                newLayers.splice(toIndex, 0, removed)
                 if (selectedKeyframe) {
+                  const newLayers = [...displayLayers]
+                  const [removed] = newLayers.splice(fromIndex, 1)
+                  newLayers.splice(toIndex, 0, removed)
                   updateKeyframe(selectedKeyframe.id, { layers: newLayers })
                 } else {
                   reorderLayers(fromIndex, toIndex)
@@ -349,13 +230,13 @@ export default function EditorPage() {
               onAddLayer={(layer) => {
                 if (selectedKeyframe) {
                   updateKeyframe(selectedKeyframe.id, { layers: [layer, ...displayLayers] })
-                  setActiveLayerId(0)
+                  setActiveLayerIndex(0)
                 } else {
                   addLayer(layer)
                 }
               }}
               onExport={() => setExportDialogOpen(true)}
-              onUpdateLayer={updateLayerVisibility}
+              onUpdateLayer={replaceLayer}
               onDuplicateLayer={duplicateLayer}
             />
           </aside>
@@ -376,7 +257,7 @@ export default function EditorPage() {
             onSelectKeyframe={setSelectedKeyframeId}
             onAnimationConfigChange={setAnimationConfig}
             onPlayToggle={() => setIsPlaying(!isPlaying)}
-            onDeselectLayer={() => setActiveLayerId(undefined)}
+            onDeselectLayer={() => setActiveLayerIndex(null)}
           />
         </footer>
       </div>

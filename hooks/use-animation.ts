@@ -11,23 +11,59 @@
 "use client"
 
 import { useState, useCallback, useEffect, useRef } from "react"
-import type { Keyframe, AnimationConfig, ProjectState, Layer } from "@/lib/gradient-types"
-import { hexToRgba, rgbaToHex } from "@/lib/color-utils"
+import type { Keyframe, AnimationConfig, ProjectState, Layer, ColorStop } from "@/lib/gradient-types"
+import { interpolateColor } from "@/lib/color-utils"
+
+/**
+ * Interpolates a single array of color stops toward a target array,
+ * lerping both color (via interpolateColor) and position. Shared by the
+ * linear and radial branches of interpolateLayers below, since stops behave
+ * identically regardless of which gradient type they belong to.
+ *
+ * @param fromStops - Starting color stops
+ * @param toStops - Ending color stops (matched to fromStops by index)
+ * @param progress - Interpolation progress (0-1)
+ */
+function interpolateColorStops(fromStops: ColorStop[], toStops: ColorStop[], progress: number): ColorStop[] {
+  return fromStops.map((stop, i) => {
+    const toStop = toStops[i]
+    if (!toStop) return stop
+
+    return {
+      ...stop,
+      color: interpolateColor(stop.color, toStop.color, progress),
+      position: stop.position + (toStop.position - stop.position) * progress,
+    }
+  })
+}
 
 /**
  * useAnimation hook
  * Manages animation playback, keyframe operations, and interpolation between frames
- * @param project - Current project state
+ *
+ * Accepts `project: null` so it can be called unconditionally before the
+ * project has finished loading (React hooks can't be called conditionally).
+ * All keyframe/layer operations become no-ops while project is null; the
+ * caller's UI shouldn't be able to invoke them before a project exists, but
+ * this keeps the hook itself safe regardless.
+ *
+ * @param project - Current project state, or null while still loading
  * @param updateProject - Function to update project state
  * @returns Animation state and control functions
  */
-export function useAnimation(project: ProjectState, updateProject: (updates: Partial<ProjectState>) => void) {
+export function useAnimation(
+  project: ProjectState | null,
+  updateProject: (updates: Partial<ProjectState>) => void,
+) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [playbackTime, setPlaybackTime] = useState(0)
-  const [playbackRate, setPlaybackRate] = useState(1)
   const [selectedKeyframeId, setSelectedKeyframeId] = useState<string | null>(null)
   const animationFrameRef = useRef<number | null>(null)
   const startTimeRef = useRef<number>(0)
+
+  const layers = project?.layers ?? []
+  const keyframes = project?.keyframes ?? []
+  const animation = project?.animation
 
   // Animation loop using requestAnimationFrame for smooth playback
   useEffect(() => {
@@ -40,7 +76,7 @@ export function useAnimation(project: ProjectState, updateProject: (updates: Par
     }
 
     startTimeRef.current = Date.now() - playbackTime
-    const duration = project.animation?.duration || 3000
+    const duration = animation?.duration || 3000
 
     const animate = () => {
       const elapsed = Date.now() - startTimeRef.current
@@ -56,7 +92,7 @@ export function useAnimation(project: ProjectState, updateProject: (updates: Par
         cancelAnimationFrame(animationFrameRef.current)
       }
     }
-  }, [isPlaying, project.animation?.duration])
+  }, [isPlaying, animation?.duration])
 
   /**
    * Adds a new keyframe at the current playback position
@@ -65,22 +101,23 @@ export function useAnimation(project: ProjectState, updateProject: (updates: Par
    */
   const addKeyframe = useCallback(
     (position: number) => {
+      if (!project) return undefined
+
       const newKeyframe: Keyframe = {
         id: `keyframe-${Date.now()}`,
         position,
-        layers: JSON.parse(JSON.stringify(project.layers)),
+        layers: JSON.parse(JSON.stringify(layers)),
         label: `${position.toFixed(0)}%`,
       }
 
       updateProject({
-        keyframes: [...project.keyframes, newKeyframe].sort((a, b) => a.position - b.position),
-        activeKeyframeId: newKeyframe.id,
+        keyframes: [...keyframes, newKeyframe].sort((a, b) => a.position - b.position),
       })
 
       setSelectedKeyframeId(newKeyframe.id)
       return newKeyframe
     },
-    [project.layers, project.keyframes, updateProject],
+    [project, layers, keyframes, updateProject],
   )
 
   /**
@@ -89,23 +126,25 @@ export function useAnimation(project: ProjectState, updateProject: (updates: Par
    */
   const copyKeyframe = useCallback(
     (keyframeId: string) => {
-      const keyframeToCopy = project.keyframes.find((kf) => kf.id === keyframeId)
+      const keyframeToCopy = keyframes.find((kf) => kf.id === keyframeId)
       if (!keyframeToCopy) return
 
       const newKeyframe: Keyframe = {
         ...keyframeToCopy,
         id: `keyframe-${Date.now()}`,
         position: Math.min(100, keyframeToCopy.position + 5),
+        // Deep-clone the layers array so editing the copy can never mutate
+        // the original keyframe's layers through a shared reference.
+        layers: JSON.parse(JSON.stringify(keyframeToCopy.layers)),
       }
 
       updateProject({
-        keyframes: [...project.keyframes, newKeyframe].sort((a, b) => a.position - b.position),
-        activeKeyframeId: newKeyframe.id,
+        keyframes: [...keyframes, newKeyframe].sort((a, b) => a.position - b.position),
       })
 
       setSelectedKeyframeId(newKeyframe.id)
     },
-    [project.keyframes, updateProject],
+    [keyframes, updateProject],
   )
 
   /**
@@ -116,12 +155,12 @@ export function useAnimation(project: ProjectState, updateProject: (updates: Par
   const updateKeyframe = useCallback(
     (keyframeId: string, updates: Partial<Keyframe>) => {
       updateProject({
-        keyframes: project.keyframes
+        keyframes: keyframes
           .map((kf) => (kf.id === keyframeId ? { ...kf, ...updates } : kf))
           .sort((a, b) => a.position - b.position),
       })
     },
-    [project.keyframes, updateProject],
+    [keyframes, updateProject],
   )
 
   /**
@@ -133,7 +172,7 @@ export function useAnimation(project: ProjectState, updateProject: (updates: Par
   const updateKeyframeLayer = useCallback(
     (keyframeId: string, layerIndex: number, updatedLayer: Layer) => {
       updateProject({
-        keyframes: project.keyframes.map((kf) => {
+        keyframes: keyframes.map((kf) => {
           if (kf.id === keyframeId) {
             const newLayers = [...kf.layers]
             newLayers[layerIndex] = updatedLayer
@@ -143,7 +182,7 @@ export function useAnimation(project: ProjectState, updateProject: (updates: Par
         }),
       })
     },
-    [project.keyframes, updateProject],
+    [keyframes, updateProject],
   )
 
   /**
@@ -153,12 +192,11 @@ export function useAnimation(project: ProjectState, updateProject: (updates: Par
   const removeKeyframe = useCallback(
     (keyframeId: string) => {
       updateProject({
-        keyframes: project.keyframes.filter((kf) => kf.id !== keyframeId),
-        activeKeyframeId: undefined,
+        keyframes: keyframes.filter((kf) => kf.id !== keyframeId),
       })
       setSelectedKeyframeId(null)
     },
-    [project.keyframes, updateProject],
+    [keyframes, updateProject],
   )
 
   /**
@@ -169,16 +207,16 @@ export function useAnimation(project: ProjectState, updateProject: (updates: Par
     (config: Partial<AnimationConfig>) => {
       updateProject({
         animation: {
-          ...project.animation,
-          name: config.name || project.animation?.name || "gradient-animation",
-          duration: config.duration || project.animation?.duration || 3000,
-          easing: config.easing || project.animation?.easing || "ease-in-out",
-          iterationCount: config.iterationCount || project.animation?.iterationCount || "infinite",
-          playbackRate: config.playbackRate || project.animation?.playbackRate || 1,
+          ...animation,
+          name: config.name || animation?.name || "gradient-animation",
+          duration: config.duration || animation?.duration || 3000,
+          easing: config.easing || animation?.easing || "ease-in-out",
+          iterationCount: config.iterationCount || animation?.iterationCount || "infinite",
+          playbackRate: config.playbackRate || animation?.playbackRate || 1,
         },
       })
     },
-    [project.animation, updateProject],
+    [animation, updateProject],
   )
 
   /**
@@ -198,24 +236,7 @@ export function useAnimation(project: ProjectState, updateProject: (updates: Par
         return {
           ...fromLayer,
           angle: fromLayer.angle + (toLayer.angle - fromLayer.angle) * progress,
-          colorStops: fromLayer.colorStops.map((stop, i) => {
-            const toStop = toLayer.colorStops[i]
-            if (!toStop) return stop
-
-            const fromRGB = hexToRgba(stop.color)
-            const toRGB = hexToRgba(toStop.color)
-
-            return {
-              ...stop,
-              color: rgbaToHex(
-                Math.round(fromRGB.r + (toRGB.r - fromRGB.r) * progress),
-                Math.round(fromRGB.g + (toRGB.g - fromRGB.g) * progress),
-                Math.round(fromRGB.b + (toRGB.b - fromRGB.b) * progress),
-                Math.round(fromRGB.a + (toRGB.a - fromRGB.a) * progress),
-              ),
-              position: stop.position + (toStop.position - stop.position) * progress,
-            }
-          }),
+          colorStops: interpolateColorStops(fromLayer.colorStops, toLayer.colorStops, progress),
         }
       }
 
@@ -224,24 +245,7 @@ export function useAnimation(project: ProjectState, updateProject: (updates: Par
           ...fromLayer,
           positionX: fromLayer.positionX + (toLayer.positionX - fromLayer.positionX) * progress,
           positionY: fromLayer.positionY + (toLayer.positionY - fromLayer.positionY) * progress,
-          colorStops: fromLayer.colorStops.map((stop, i) => {
-            const toStop = toLayer.colorStops[i]
-            if (!toStop) return stop
-
-            const fromRGB = hexToRgba(stop.color)
-            const toRGB = hexToRgba(toStop.color)
-
-            return {
-              ...stop,
-              color: rgbaToHex(
-                Math.round(fromRGB.r + (toRGB.r - fromRGB.r) * progress),
-                Math.round(fromRGB.g + (toRGB.g - fromRGB.g) * progress),
-                Math.round(fromRGB.b + (toRGB.b - fromRGB.b) * progress),
-                Math.round(fromRGB.a + (toRGB.a - fromRGB.a) * progress),
-              ),
-              position: stop.position + (toStop.position - stop.position) * progress,
-            }
-          }),
+          colorStops: interpolateColorStops(fromLayer.colorStops, toLayer.colorStops, progress),
         }
       }
 
@@ -257,12 +261,12 @@ export function useAnimation(project: ProjectState, updateProject: (updates: Par
    */
   const getFrameAtTime = useCallback(
     (time: number): Layer[] => {
-      if (project.keyframes.length === 0) return project.layers
+      if (keyframes.length === 0) return layers
 
-      const duration = project.animation?.duration || 3000
+      const duration = animation?.duration || 3000
       const timePercent = ((time % duration) / duration) * 100
 
-      const sortedKeyframes = [...project.keyframes].sort((a, b) => a.position - b.position)
+      const sortedKeyframes = [...keyframes].sort((a, b) => a.position - b.position)
 
       let fromKeyframe = sortedKeyframes[0]
       let toKeyframe = sortedKeyframes[sortedKeyframes.length - 1]
@@ -282,7 +286,7 @@ export function useAnimation(project: ProjectState, updateProject: (updates: Par
 
       return interpolateLayers(fromKeyframe.layers, toKeyframe.layers, progress)
     },
-    [project.keyframes, project.animation, project.layers, interpolateLayers],
+    [keyframes, animation, layers, interpolateLayers],
   )
 
   return {
@@ -290,8 +294,6 @@ export function useAnimation(project: ProjectState, updateProject: (updates: Par
     setIsPlaying,
     playbackTime,
     setPlaybackTime,
-    playbackRate,
-    setPlaybackRate,
     selectedKeyframeId,
     setSelectedKeyframeId,
     addKeyframe,

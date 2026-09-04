@@ -28,9 +28,11 @@ export function PropertyEditor({ layer, onChange, onClose }: PropertyEditorProps
   const handleTypeChange = (value: string) => {
     if (!layer) return
 
+    // Switching a layer's type keeps its slot/id — only the shape changes.
     if (value === "linear") {
       const linearGradient: LinearGradient = {
         type: "linear",
+        id: layer.id,
         angle: 0,
         colorStops: [
           { id: "1", color: "#000000ff", position: 0 },
@@ -42,6 +44,7 @@ export function PropertyEditor({ layer, onChange, onClose }: PropertyEditorProps
     } else if (value === "radial") {
       const radialGradient: RadialGradient = {
         type: "radial",
+        id: layer.id,
         shape: "circle",
         sizeType: "farthest-corner",
         positionX: 50,
@@ -59,6 +62,7 @@ export function PropertyEditor({ layer, onChange, onClose }: PropertyEditorProps
     } else if (value === "url") {
       const imageLayer: URLLayer = {
         type: "url",
+        id: layer.id,
         url: "",
         backgroundSize: "cover",
         backgroundRepeat: "no-repeat",

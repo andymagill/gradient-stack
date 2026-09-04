@@ -7,7 +7,7 @@ Gradient Stack is a visual playground for creating, saving, and sharing animated
 - **Project Gallery** – Displays saved animations and curated templates with live thumbnails generated from gradient layers. Users can search, delete, and open projects, or branch from a template.
 - **Editor Canvas** – Offers a layer-based timeline and preview that compiles gradient layers into CSS, including keyframes-driven motion, radial gradients, and color stops that blend and animate.
 - **Storage Layer** – Persists gradient projects to browser storage with utilities in `lib/project-storage.ts`, letting you iterate without losing state between sessions.
-- **Utility Library** – `lib/gradient-compiler.ts` converts gradient layer definitions into optimized CSS, while helper hooks/components keep inputs, sliders, and previews consistent across the experience.
+- **Utility Library** – `lib/gradient-compiler.ts` converts gradient layer definitions into CSS, while helper hooks/components keep inputs, sliders, and previews consistent across the experience.
 
 ## Getting Started
 
@@ -16,21 +16,23 @@ pnpm install
 pnpm dev
 ```
 
-The editor lives under `app/editor/[id]/page.tsx`, while `app/page.tsx` renders the gallery, hero text, and CTA for creating new stacks.
+The editor lives under `app/editor/[id]/page.tsx`, while `app/page.tsx` renders the gallery.
 
 ### Local Flow
 
 1. Open the gallery (`/`) to view saved projects and templates.
 2. Create a new stack to launch the editor canvas with a blank gradient.
-3. Work with custom sliders, keyframes, and exports—changes are saved automatically and reflected in the gallery.
-4. Templates under `components/templates` (if expanded) or `lib/TEMPLATES` provide quick visual starting points, including the `template-random` that produces a fresh gradient each time.
+3. Work with custom sliders, keyframes, and exports—changes are saved automatically (debounced) and reflected in the gallery.
+4. Templates live in `lib/templates.ts` and provide quick visual starting points, including `template-random`, which produces a fresh gradient every time it's opened. Opening any template forks it into a new saved project first, so edits never touch the original preset.
 
 ## Development Notes
 
 - `components/project-gallery.tsx` handles the gallery layout, project filtering, and the `ProjectCard` wrapper that renders thumbnails and delete controls.
-- `lib/gradient-compiler.ts` is responsible for generating `background-image`, `background-position`, and animation keyframes from structured gradient data.
+- `lib/gradient-compiler.ts` is responsible for generating `background`/`background-position` shorthand and `@keyframes` CSS from structured gradient/layer data.
+- `hooks/use-project-editor.ts` owns all editor state (loading, autosave, layer and keyframe CRUD); `app/editor/[id]/page.tsx` is layout only.
 - To avoid hydration issues, client-only randomness is managed with hooks inside `ProjectCard`, while deterministic templates use precompiled CSS strings.
 - UI primitives live inside `components/ui/`, encompassing buttons, dialogs, forms, and cards styled with Tailwind.
+- See `docs/ARCHITECTURE.md` for the full file layout, data flow, and design-token reference.
 
 ## Testing & Preview
 
@@ -38,15 +40,14 @@ The project currently relies on manual testing inside the Next.js dev server. Ru
 
 ## Deployment
 
-Deployments happen through Vercel (see `vercel.json` or the Vercel dashboard) and automatically use the `main` branch. The public preview is available at https://gradient.magill.dev, and pushing to the repo triggers a rebuild that surfaces the latest gradient assets.
+The public preview is available at https://gradient.magill.dev. Deployment configuration lives outside this repository (Vercel project settings).
 
 ## Directory Highlights
 
 - `components/` – Composable UI for the gallery, editor controls, and modal dialogs.
-- `lib/` – Gradient compilation, project persistence, and shared utility functions.
-- `hooks/` – Animation helpers used across the canvas and timeline features.
+- `lib/` – Gradient compilation, project persistence, template presets, and shared utility functions.
+- `hooks/` – Editor state orchestration and animation playback/interpolation.
 - `app/` – Next.js routing structure with `layout.tsx`, the gallery homepage, and editor detail routes.
-- `styles/` – Global styles sourced from both `app/globals.css` and `styles/globals.css`, mainly Tailwind overrides.
 
 ## Contributing
 
@@ -59,8 +60,8 @@ Deployments happen through Vercel (see `vercel.json` or the Vercel dashboard) an
 | Command | Description |
 | --- | --- |
 | `pnpm dev` | Starts Next.js in dev mode with Fast Refresh. |
-| `pnpm lint` | Runs linting (if configured) to keep styles consistent. |
+| `pnpm build` | Type-checks and builds for production. |
+| `pnpm start` | Serves a production build. |
 | `pnpm test` | Not implemented; use manual testing and UI exploration. |
-| `pnpm build` | Builds for production and reports compile errors. |
 
 Feel free to reach out via the repository issues if you want to brainstorm new gradient effects or improve animation exports.

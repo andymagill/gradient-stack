@@ -3,7 +3,8 @@
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import type { ColorStop } from "@/lib/gradient-types"
-import { useState } from "react"
+import { isValidHexColor, randomColor } from "@/lib/color-utils"
+import { useEffect, useState } from "react"
 
 interface ColorStopSliderProps {
   colorStop: ColorStop
@@ -18,22 +19,29 @@ interface ColorStopSliderProps {
 export function ColorStopSlider({ colorStop, onChange }: ColorStopSliderProps) {
   const [editingColor, setEditingColor] = useState<string | null>(null)
 
+  // Discard any in-progress hex edit when a different stop is selected, so a
+  // half-typed value from the previous stop can't linger and appear "stuck"
+  // on the newly selected one.
+  useEffect(() => {
+    setEditingColor(null)
+  }, [colorStop.id])
+
   const handleColorInputChange = (newValue: string) => {
     setEditingColor(newValue)
   }
 
   const handleColorInputBlur = () => {
-    if (!editingColor) return
+    if (editingColor === null) return
 
-    const val = editingColor.toUpperCase()
-    if (val.match(/^#[0-9A-F]{6}([0-9A-F]{2})?$/)) {
-      // Already valid format
-      onChange({ color: val })
-    } else if (val.match(/^#[0-9A-F]{6}$/)) {
-      // 6-digit hex - auto-append full opacity
-      onChange({ color: val + "FF" })
+    const trimmed = editingColor.trim()
+    if (isValidHexColor(trimmed)) {
+      // 6-digit hex has no alpha channel — normalize to 8-digit, full opacity.
+      const normalized = trimmed.length === 7 ? `${trimmed}FF` : trimmed
+      onChange({ color: normalized.toUpperCase() })
     }
-    // If invalid, just discard the edit and reset
+    // Invalid input is discarded. Clearing editingColor (rather than leaving
+    // it as the invalid string) reverts the field to colorStop.color, which
+    // still reflects the last-committed value.
     setEditingColor(null)
   }
 
@@ -65,15 +73,7 @@ export function ColorStopSlider({ colorStop, onChange }: ColorStopSliderProps) {
         size="sm"
         variant="outline"
         className="w-full bg-transparent"
-        onClick={() => {
-          const randomColor =
-            "#" +
-            Math.floor(Math.random() * 16777215)
-              .toString(16)
-              .padStart(6, "0") +
-            "ff"
-          onChange({ color: randomColor.toUpperCase() })
-        }}
+        onClick={() => onChange({ color: randomColor() })}
         title="Randomize color"
       >
         Random Color

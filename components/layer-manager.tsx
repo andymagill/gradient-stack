@@ -4,12 +4,14 @@ import type React from "react"
 
 import { Button } from "@/components/ui/button"
 import type { Layer } from "@/lib/gradient-types"
+import { generateId } from "@/lib/utils"
 import { Plus, Trash2, Download, GripVertical, Eye, EyeOff, Copy } from "lucide-react"
 import { useState } from "react"
 
 interface LayerManagerProps {
   layers: Layer[]
-  activeLayerId?: string | number
+  /** Index of the currently open layer, or null when none is selected */
+  activeLayerIndex: number | null
   onSelectLayer: (index: number) => void
   onRemoveLayer: (index: number) => void
   onReorderLayers: (fromIndex: number, toIndex: number) => void
@@ -42,7 +44,7 @@ interface LayerManagerProps {
  */
 export function LayerManager({
   layers,
-  activeLayerId,
+  activeLayerIndex,
   onSelectLayer,
   onRemoveLayer,
   onReorderLayers,
@@ -93,6 +95,7 @@ export function LayerManager({
         className="border-border hover:bg-accent bg-transparent gap-2"
         onClick={() => {
           onAddLayer({
+            id: generateId(),
             type: "linear",
             angle: 45,
             colorStops: [
@@ -113,7 +116,7 @@ export function LayerManager({
         <div className="flex flex-col gap-1 border-t border-border pt-2 max-h-64 overflow-y-auto">
           {layers.map((layer, index) => (
             <div
-              key={index}
+              key={layer.id ?? index}
               draggable
               onDragStart={() => handleDragStart(index)}
               onDragOver={(e) => handleDragOver(e, index)}
@@ -128,15 +131,12 @@ export function LayerManager({
 
               <Button
                 size="sm"
-                variant={index === activeLayerId ? "default" : "outline"}
-                className={`p-2 h-auto shrink-0 flex-1 ${index === activeLayerId ? "bg-primary hover:bg-primary/90" : "border-border hover:bg-accent"}`}
-                onClick={() => {
-                  if (index === activeLayerId) {
-                    onSelectLayer(-1)
-                  } else {
-                    onSelectLayer(index)
-                  }
-                }}
+                variant={index === activeLayerIndex ? "default" : "outline"}
+                className={`p-2 h-auto shrink-0 flex-1 ${index === activeLayerIndex ? "bg-primary hover:bg-primary/90" : "border-border hover:bg-accent"}`}
+                // onSelectLayer toggles off when the same index is passed
+                // again (see useProjectEditor.handleSelectLayer) — no need
+                // to duplicate that logic here with an out-of-range sentinel.
+                onClick={() => onSelectLayer(index)}
                 title={`Layer ${index + 1}`}
               >
                 <span className="text-xs font-semibold uppercase tracking-wider">
@@ -168,10 +168,16 @@ export function LayerManager({
                 size="sm"
                 variant="ghost"
                 className={`p-1 h-auto shrink-0 ${
-                  index === activeLayerId ? "text-muted-foreground hover:text-destructive" : "invisible"
+                  index === activeLayerIndex ? "text-muted-foreground hover:text-destructive" : "invisible"
                 }`}
-                onClick={() => onRemoveLayer(index)}
-                title="Delete layer"
+                onClick={() => {
+                  // At least one layer must always remain, or the preview
+                  // and export would fall back to a blank "transparent"
+                  // background with no way to add a new layer back in.
+                  if (layers.length > 1) onRemoveLayer(index)
+                }}
+                disabled={layers.length <= 1}
+                title={layers.length <= 1 ? "At least one layer is required" : "Delete layer"}
               >
                 <Trash2 className="w-4 h-4" />
               </Button>

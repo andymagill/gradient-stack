@@ -18,8 +18,6 @@ export interface ColorStop {
   color: string
   /** Position in gradient from 0-100% */
   position: number
-  /** Optional color hint position for smoother transitions */
-  hint?: number
 }
 
 /**
@@ -28,6 +26,12 @@ export interface ColorStop {
  */
 export interface LinearGradient {
   type: "linear"
+  /**
+   * Stable identifier for React reconciliation during drag-reorder.
+   * Optional because projects saved before this field existed won't have
+   * one — LayerManager falls back to the array index for those.
+   */
+  id?: string
   /** Gradient direction in degrees (0-360) */
   angle: number
   /** Array of color stops defining the gradient */
@@ -44,6 +48,8 @@ export interface LinearGradient {
  */
 export interface RadialGradient {
   type: "radial"
+  /** Stable identifier for React reconciliation during drag-reorder (see LinearGradient.id) */
+  id?: string
   /** Circle or ellipse shape */
   shape: "circle" | "ellipse"
   /** Size type or custom dimensions */
@@ -68,6 +74,8 @@ export interface RadialGradient {
  */
 export interface URLLayer {
   type: "url"
+  /** Stable identifier for React reconciliation during drag-reorder (see LinearGradient.id) */
+  id?: string
   /** Image URL */
   url: string
   /** Background size mode */
@@ -131,10 +139,6 @@ export interface ProjectState {
   layers: Layer[]
   /** Animation keyframes */
   keyframes: Keyframe[]
-  /** Currently selected layer ID */
-  activeLayerId?: string
-  /** Currently selected keyframe ID */
-  activeKeyframeId?: string
   /** Animation configuration */
   animation?: AnimationConfig
   /** Creation timestamp */

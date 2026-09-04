@@ -108,7 +108,9 @@ export function RadialGradientEditor({ gradient, onChange }: RadialGradientEdito
             <div
               className="absolute inset-0"
               style={{
-                background: `radial-gradient(circle, ${gradient.colorStops
+                // Sort a copy — see linear-gradient-editor.tsx for why
+                // sorting gradient.colorStops in place would corrupt render.
+                background: `radial-gradient(circle, ${[...gradient.colorStops]
                   .sort((a, b) => a.position - b.position)
                   .map((stop) => `${stop.color} ${stop.position}%`)
                   .join(", ")})`,

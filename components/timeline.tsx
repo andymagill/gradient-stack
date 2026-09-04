@@ -3,9 +3,31 @@
 import type React from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import type { Keyframe, AnimationConfig } from "@/lib/gradient-types"
+import type { Keyframe, AnimationConfig, Layer, LinearGradient, RadialGradient } from "@/lib/gradient-types"
 import { Plus, Play, Pause } from "lucide-react"
 import { useState, useRef } from "react"
+
+function hasColorStops(layer: Layer): layer is LinearGradient | RadialGradient {
+  return layer.type === "linear" || layer.type === "radial"
+}
+
+/**
+ * Picks the first color stop from each gradient layer to build a keyframe
+ * thumbnail swatch. URLLayer has no colorStops (a real type mismatch that
+ * `any`-typed access previously masked), and `linear-gradient()` needs at
+ * least two stops to render, so both edge cases are handled explicitly
+ * rather than producing invalid CSS.
+ */
+function getKeyframeSwatchColors(layers: Layer[]): string[] {
+  const colors = layers
+    .filter(hasColorStops)
+    .map((l) => l.colorStops[0]?.color)
+    .filter((c): c is string => Boolean(c))
+
+  if (colors.length === 0) return ["#888888", "#888888"]
+  if (colors.length === 1) return [colors[0], colors[0]]
+  return colors
+}
 
 interface TimelineProps {
   keyframes: Keyframe[]
@@ -213,8 +235,11 @@ export function Timeline({
                           isSelected ? "bg-accent border-foreground" : "bg-primary border-foreground/50 hover:scale-110"
                         }`}
                         style={{
-                          background: `linear-gradient(to right, ${keyframe.layers.map((l) => l.colorStops?.[0]?.color || "#888").join(", ")})`,
-                          borderColor: isSelected ? "hsl(var(--foreground))" : "hsla(var(--foreground) / 0.5)",
+                          background: `linear-gradient(to right, ${getKeyframeSwatchColors(keyframe.layers).join(", ")})`,
+                          // Design tokens are defined as oklch(...), so
+                          // hsl(var(--foreground)) / hsla(... / 0.5) here
+                          // were invalid CSS and silently dropped.
+                          borderColor: isSelected ? "var(--foreground)" : "var(--muted-foreground)",
                         }}
                       />
                       {isSelected && (

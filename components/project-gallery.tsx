@@ -16,33 +16,22 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import {
   getProjectsList,
-  TEMPLATES,
+  loadProject,
   deleteProject,
   createProject,
   saveProject,
-  generateRandomTemplate,
   createProjectFromTemplate,
 } from "@/lib/project-storage"
 import type { ProjectMetadata } from "@/lib/project-storage"
+import { TEMPLATES, generateRandomTemplate } from "@/lib/templates"
 import { compileBackgroundCSS } from "@/lib/gradient-compiler"
-import { loadProject } from "@/lib/project-storage"
+import { randomColor } from "@/lib/color-utils"
 import { Input } from "@/components/ui/input"
 
+/** A quick, throwaway two-stop gradient for the "Random Mix" template card's live preview. */
 function generateSimpleRandomGradient(): string {
-  const getRandomColor = () => {
-    const letters = "0123456789ABCDEF"
-    let color = "#"
-    for (let i = 0; i < 6; i++) {
-      color += letters[Math.floor(Math.random() * 16)]
-    }
-    return color
-  }
-
   const angle = Math.floor(Math.random() * 360)
-  const color1 = getRandomColor()
-  const color2 = getRandomColor()
-
-  return `linear-gradient(${angle}deg, ${color1}, ${color2})`
+  return `linear-gradient(${angle}deg, ${randomColor()}, ${randomColor()})`
 }
 
 export function ProjectGallery() {
