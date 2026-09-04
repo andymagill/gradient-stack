@@ -79,17 +79,54 @@ export function compileRadialGradientCSSWithVariables(gradient: RadialGradient, 
 }
 
 /**
+ * Escapes a URL for safe interpolation inside a CSS `url(" ... ")` token.
+ *
+ * WHY THIS EXISTS: the compiled CSS is injected into the page via
+ * `dangerouslySetInnerHTML` (see PreviewCanvas) and written verbatim into the
+ * exported HTML file. An unescaped user-supplied URL containing `"` or `)`
+ * can close the `url()` token early and inject arbitrary CSS (or, in the
+ * exported file, arbitrary HTML via a `</style>` sequence). Only http(s) and
+ * data: URLs are allowed through; anything else (e.g. `javascript:`) is
+ * rejected rather than silently stripped, since a background-image cannot
+ * execute a javascript: URL but we don't want to rely on that.
+ *
+ * @param url - Raw URL as entered by the user
+ * @returns A safely quoted `url("...")` token, or `none` if the URL is empty/unsupported
+ */
+function toSafeCSSUrl(url: string): string {
+  const trimmed = url.trim()
+  if (!trimmed) return "none"
+  if (!/^(https?:|data:)/i.test(trimmed)) return "none"
+
+  const escaped = trimmed
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/[\r\n]/g, "")
+
+  return `url("${escaped}")`
+}
+
+/**
  * Compiles a URL/image layer to CSS
+ *
+ * Honors backgroundSize (including custom width/height), backgroundRepeat,
+ * and backgroundPosition, so the corresponding property-editor controls
+ * actually affect the rendered layer.
+ *
  * @param layer - URL layer configuration
- * @returns CSS background image string
+ * @returns CSS background image string (position / size and repeat included)
  */
 export function compileURLCSS(layer: URLLayer): string {
+  const urlToken = toSafeCSSUrl(layer.url)
+
   const sizeStr =
     layer.backgroundSize === "custom"
-      ? `${layer.backgroundSizeCustom?.width} ${layer.backgroundSizeCustom?.height}`
+      ? `${layer.backgroundSizeCustom?.width || "auto"} ${layer.backgroundSizeCustom?.height || "auto"}`
       : layer.backgroundSize
 
-  return `url('${layer.url}') no-repeat`
+  const positionStr = `${layer.backgroundPosition?.x ?? 50}% ${layer.backgroundPosition?.y ?? 50}%`
+
+  return `${urlToken} ${positionStr} / ${sizeStr} ${layer.backgroundRepeat}`
 }
 
 /**
@@ -124,40 +161,59 @@ export function compileLayerCSSWithVariables(layer: Layer, layerIndex: number): 
 }
 
 /**
+ * Filters a layer stack down to visible layers only.
+ *
+ * WHY THIS EXISTS: every function below that assigns a layer a numeric index
+ * (for CSS variable names like `--gradient-l{index}-c{stop}`) MUST use the
+ * exact same visible-layer list, in the exact same order, or the indices
+ * assigned here will not match the indices `generatePropertyDeclarations`
+ * registers via `@property`. A mismatch means the browser has no type
+ * information for the variable actually used in `background`, so it can't be
+ * animated — the gradient jumps between keyframes instead of transitioning
+ * smoothly. Route every "visible layers" filter through this one function so
+ * that invariant can't drift again (it did previously: see git history).
+ *
+ * @param layers - Full layer stack, in stack order
+ * @returns Layers with `visible !== false` (undefined is treated as visible)
+ */
+export function getVisibleLayers(layers: Layer[]): Layer[] {
+  return layers.filter((layer) => layer.visible !== false)
+}
+
+/**
  * Compiles multiple layers into a composite background CSS
  *
- * IMPORTANT: Only visible layers are included in the output.
- * Layers with visible=false are filtered out to prevent them from rendering.
+ * Only visible layers are included in the output (see getVisibleLayers).
  * This affects both preview and exported CSS.
  *
  * @param layers - Array of layer configurations
  * @returns CSS background string with all visible layers composited
  */
 export function compileBackgroundCSS(layers: Layer[]): string {
-  const visibleLayers = layers.filter((layer) => layer.visible !== false)
-  return visibleLayers.map(compileLayerCSS).join(",\n")
+  return getVisibleLayers(layers).map(compileLayerCSS).join(",\n")
 }
 
 /**
  * Compiles multiple layers with variable support for animation
  *
- * IMPORTANT: Only visible layers are included in the output.
- * Layers with visible=false are filtered out to prevent them from rendering.
- * This must match the behavior of compileBackgroundCSS.
+ * Only visible layers are included in the output (see getVisibleLayers).
+ * This must match the behavior of compileBackgroundCSS and
+ * generatePropertyDeclarations, or CSS variable indices will desync.
  *
  * @param layers - Array of layer configurations
  * @returns CSS background string with CSS variables for visible layers only
  */
 export function compileBackgroundCSSWithVariables(layers: Layer[]): string {
-  const visibleLayers = layers.filter((layer) => layer.visible !== false)
-  return visibleLayers.map((layer, idx) => compileLayerCSSWithVariables(layer, idx)).join(",\n")
+  return getVisibleLayers(layers)
+    .map((layer, idx) => compileLayerCSSWithVariables(layer, idx))
+    .join(",\n")
 }
 
 /**
  * Generates CSS variable definitions from layer colors and positions
  *
- * IMPORTANT: Only visible layers generate variables.
- * This prevents invisible layers from affecting the animation.
+ * Only visible layers generate variables (see getVisibleLayers), so invisible
+ * layers can't affect the animation.
  *
  * @param layers - Array of layers
  * @returns CSS variable declarations for visible layers only
@@ -165,7 +221,7 @@ export function compileBackgroundCSSWithVariables(layers: Layer[]): string {
 export function generateColorVariables(layers: Layer[]): Record<string, string> {
   const variables: Record<string, string> = {}
 
-  const visibleLayers = layers.filter((layer) => layer.visible !== false)
+  const visibleLayers = getVisibleLayers(layers)
 
   visibleLayers.forEach((layer, layerIndex) => {
     if (layer.type === "linear") {
@@ -220,13 +276,17 @@ export function generateKeyframesCSS(state: ProjectState, animationName: string)
 /**
  * Generates @property declarations for CSS custom properties
  * Enables browser interpolation of color and position values during animation
+ *
+ * Only visible layers are declared (see getVisibleLayers) so the indices here
+ * line up with the indices compileBackgroundCSSWithVariables assigns.
+ *
  * @param layers - Array of layers
  * @returns CSS @property rules
  */
 export function generatePropertyDeclarations(layers: Layer[]): string {
   const declarations: string[] = []
 
-  layers.forEach((layer, layerIndex) => {
+  getVisibleLayers(layers).forEach((layer, layerIndex) => {
     if (layer.type === "linear") {
       declarations.push(`@property --linear-${layerIndex}-angle {
   syntax: "<angle>";

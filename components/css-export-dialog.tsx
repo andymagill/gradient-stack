@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { generateFullCSS } from "@/lib/gradient-compiler"
 import type { ProjectState } from "@/lib/gradient-types"
 import { Copy, Download } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 interface CSSExportDialogProps {
   isOpen: boolean
@@ -15,24 +15,30 @@ interface CSSExportDialogProps {
 
 export function CSSExportDialog({ isOpen, onOpenChange, project }: CSSExportDialogProps) {
   const [copied, setCopied] = useState(false)
+  const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const cssCode = generateFullCSS(project)
+  // Recompute only when the project actually changes, not on every render
+  // (this dialog can re-render while open without the project changing).
+  const cssCode = useMemo(() => generateFullCSS(project), [project])
+
+  useEffect(() => {
+    return () => {
+      if (copiedTimeoutRef.current) clearTimeout(copiedTimeoutRef.current)
+    }
+  }, [])
 
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(cssCode)
       setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      if (copiedTimeoutRef.current) clearTimeout(copiedTimeoutRef.current)
+      copiedTimeoutRef.current = setTimeout(() => setCopied(false), 2000)
     } catch (err) {
       console.error("Failed to copy:", err)
     }
   }
 
   const handleDownload = () => {
-    const animationDuration = project.animation?.duration || 3000
-    const animationEasing = project.animation?.easing || "ease-in-out"
-    const iterationCount = "infinite"
-
     const htmlContent = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -163,11 +169,14 @@ ${cssCode}
 
     const element = document.createElement("a")
     const file = new Blob([htmlContent], { type: "text/html" })
-    element.href = URL.createObjectURL(file)
+    const objectUrl = URL.createObjectURL(file)
+    element.href = objectUrl
     element.download = `${project.name || "gradient-stack"}.html`
     document.body.appendChild(element)
     element.click()
     document.body.removeChild(element)
+    // Without this, each download leaks the blob for the life of the page.
+    URL.revokeObjectURL(objectUrl)
   }
 
   return (

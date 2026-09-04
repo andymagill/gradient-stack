@@ -70,7 +70,11 @@ export function LinearGradientEditor({ gradient, onChange }: LinearGradientEdito
             <div
               className="absolute inset-0"
               style={{
-                background: `linear-gradient(90deg, ${gradient.colorStops
+                // Sort a copy — Array.prototype.sort mutates in place, and
+                // gradient.colorStops is live project state; sorting it
+                // during render would reorder it out from under the stop
+                // markers rendered just below, which read the unsorted array.
+                background: `linear-gradient(90deg, ${[...gradient.colorStops]
                   .sort((a, b) => a.position - b.position)
                   .map((stop) => `${stop.color} ${stop.position}%`)
                   .join(", ")})`,

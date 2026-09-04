@@ -53,17 +53,13 @@ export function PreviewCanvas({ project, playbackTime, isPlaying }: PreviewCanva
     return generateKeyframesCSS(project, ANIMATION_NAME)
   }, [project])
 
-  // Get initial variable values from first keyframe or base layers
-  const initialVariables = useMemo(() => {
+  // Initial CSS variable values, from the first keyframe or base layers.
+  // generateColorVariables already returns "--"-prefixed keys, which is
+  // exactly the shape a React style object needs for custom properties.
+  const cssVariables = useMemo(() => {
     const layers = project.keyframes && project.keyframes.length > 0 ? project.keyframes[0].layers : project.layers
-    return generateColorVariables(layers)
+    return generateColorVariables(layers) as React.CSSProperties
   }, [project])
-
-  const cssVariables: Record<string, string> = {}
-  Object.entries(initialVariables).forEach(([name, value]) => {
-    const cleanName = name.startsWith("--") ? name.substring(2) : name
-    cssVariables[`--${cleanName}` as string] = value
-  })
 
   useEffect(() => {
     if (!elementRef.current) return
@@ -82,7 +78,9 @@ export function PreviewCanvas({ project, playbackTime, isPlaying }: PreviewCanva
       el.style.animationDelay = `${delay}ms`
       el.style.animationFillMode = "both"
     }
-  }, [playbackTime, isPlaying, project, ANIMATION_NAME])
+    // isPlaying isn't read here: the preview is always CSS-paused and
+    // scrubbed via animation-delay regardless of play state (see class doc).
+  }, [playbackTime, project, ANIMATION_NAME])
 
   const fullCSS = `
 ${propertyDeclarations}
